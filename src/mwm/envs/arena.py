@@ -11,8 +11,8 @@ class Arena2D:
 		x = self.rng.uniform(1,9)
 		y = self.rng.uniform(1,9)
 		theta = self.rng.uniform(-np.pi,np.pi)
-		self.state = [x, y, theta]
-		return self.state;
+		self.state = np.array([x, y, theta])
+		return self.state.copy()
 	def step(self, action):
 		v, omega = action
 		x, y, theta = self.state
@@ -28,5 +28,5 @@ class Arena2D:
 		if(x>self.size): x = self.size
 		if(y<0): y = 0
 		if(y>self.size): y = self.size
-		self.state = [x, y, theta]
-		return self.state
+		self.state = np.array([x, y, theta])
+		return self.state.copy()
