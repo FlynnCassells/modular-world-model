@@ -18,15 +18,20 @@ dependencies = [
     "wandb>=0.31.0",
 ]
 
-[project.scripts]
-modular-world-model = "modular_world_model:main"
+
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]
 build-backend = "uv_build"
+
+[too.uv.build-backend]
+module-name = "mwm"
 
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
     "ruff>=0.17.2",
 ]
+
+[tool.uv.build-backend]
+module-name = "mwm"
