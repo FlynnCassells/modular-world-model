@@ -1,15 +1,28 @@
 import numpy as np
+import zlib
 from mwm.policies import generate_action, wall_aware_action
 
-def rollout(N_steps, arena, sensor=None, seed=None):
-	policy_rng, sensor_rng = np.random.default_rng(seed).spawn(2)
-	arena.reset(seed)
-	xs = np.zeros(N_steps)
-	ys = np.zeros(N_steps)
-	thetas = np.zeros(N_steps)
-	obsered_vals = np.zeros([N_steps, sensor.obs_dim]) if sensor is not None else None
+def rollout(N_steps, arena, seed, sensors=None, margin=0.2):
+	policy_rng = np.random.default_rng([seed, zlib.crc32(b"policy")])
+	state = arena.reset(seed)
+	if sensors is not None:
+		sensor_rng = {}
+		observed_vals = {}
+		for sensor in sensors:
+			name_number = zlib.crc32(sensor.name.encode())
+			sensor_rng[sensor.name] = np.random.default_rng([seed, name_number])
+			observed_vals[sensor.name] = np.zeros([N_steps, sensor.obs_dim])
+			sensor.reset(state)
+	else:
+		observed_vals = None
+	states = np.zeros([N_steps+1, 3])
+	states[0,:] = state
+	actions = np.zeros([N_steps, 2])
 	for i in range(0,N_steps):
 		action = wall_aware_action(arena, policy_rng)
-		xs[i], ys[i], thetas[i] = arena.step(action);
-		if sensor is not None: obsered_vals[i,:] = sensor.observe(arena.state, action, sensor_rng)
-	return np.stack([xs, ys, thetas], axis=1), obsered_vals
+		actions[i] = action
+		states[i+1] = arena.step(action);
+		if sensors is not None: 
+			for j, sensor in enumerate(sensors):
+				observed_vals[sensor.name][i,:] = sensor.observe(arena.state, arena.last_executed, sensor_rng[sensor.name])
+	return states, observed_vals, actions

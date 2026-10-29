@@ -29,4 +29,5 @@ class Arena2D:
 		if(y<0): y = 0
 		if(y>self.size): y = self.size
 		self.state = np.array([x, y, theta])
+		self.last_executed = [v*self.dt, omega*self.dt]
 		return self.state.copy()

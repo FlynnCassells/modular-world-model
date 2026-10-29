@@ -1,6 +1,5 @@
 import numpy as np
 from mwm.envs.arena import Arena2D
-from mwm.sensors.lighthouse import LighthouseSensor
 
 def generate_action(arena, rng):
     v = rng.uniform(0, arena.max_speed)
@@ -8,7 +7,7 @@ def generate_action(arena, rng):
     return np.array([v, omega])
 
 
-def wall_aware_action(arena, rng, margin=0.3):
+def wall_aware_action(arena, rng, margin=0.2):
     x, y, theta = arena.state
     if margin < x < arena.size - margin and margin < y < arena.size - margin:
         return generate_action(arena, rng)

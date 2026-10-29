@@ -7,3 +7,5 @@ class Sensor:
 		raise NotImplementedError(
             "Subclasses must implement observe()"
         )
+	def reset(self , state):
+		pass
