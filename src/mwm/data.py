@@ -2,6 +2,7 @@ import numpy as np
 import json
 import torch
 from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
 
 def load_dataset(name, folder="data"):
 	with np.load(f"{folder}/{name}.npz") as f1:
@@ -42,18 +43,47 @@ def normalise(arrays, stats):
 
 
 class WindowDataset(Dataset):
-    def __init__(self, arrays, window_len=50, stride=10):
-        # convert each array to a float32 tensor, once
-        # build self.index: a list of (episode, start) pairs
-        ...
+	def __init__(self, arrays, window_len=50, stride=10):
+		self.window_len = window_len
+		self.obs = {}
+		for key,array in arrays.items():
+			tensor = torch.from_numpy(array).float()
+			if key.startswith("obs_"):
+				self.obs[key.removeprefix("obs_")] = tensor
+			elif key =="actions":
+				self.actions = tensor
+			elif key == "states":
+				self.states = tensor
+		self.index = []
+		n_episodes, n_steps = self.actions.shape[:2]
+		for episode in range(n_episodes):
+			for start in range(0, n_steps - window_len + 1, stride):
+				self.index.append((episode, start))
+	def __len__(self):
+		return len(self.index)
 
-    def __len__(self):
-        ...
+	def __getitem__(self, idx):
+		episode, start = self.index[idx]
+		end = start + self.window_len
+		dictionary = {}
+		dictionary["obs"] = {key: data[episode, start:end] for key, data in self.obs.items()}
+		dictionary["actions"] = self.actions[episode, start:end]
+		dictionary["states"] = self.states[episode, start:end+1]
+		return dictionary
 
-    def __getitem__(self, idx):
-        # look up (episode, start)
-        # return a dict of that window:
-        #   obs per sensor:  steps start .. start + window_len
-        #   actions:         same range
-        #   states:          start .. start + window_len + 1  (one longer)
-        ...
+def build_datasets(name, window_len=50, stride=10, folder="data"):
+	arrays, settings = load_dataset(name, folder)
+	arrays = preprocess(arrays)
+	splits = split_dataset(arrays, settings["splits"])
+	obs_keys = [k for k in arrays if k.startswith("obs_")]
+	stats = compute_norm_stats(splits["train"], obs_keys+["actions"])
+	datasets = {
+		splits_name: WindowDataset(normalise(part, stats), window_len, stride) for splits_name, part in splits.items()
+	}
+	return datasets, stats, settings
+
+
+
+
+
+
