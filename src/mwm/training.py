@@ -50,7 +50,7 @@ def evaluate(model, loader, device):
 			predictions, _ = model(obs=sensor_inputs, masks=masks, actions=actions)
 			loss, loss_log = compute_loss(predictions, targets)
 			for sensor, values in loss_log.items():
-				totals[sensor] = totals.get(sensor, 0) + value
+				totals[sensor] = totals.get(sensor, 0) + values
 			n_batches += 1
 		model.train()
 	return {sensor: value/n_batches for sensor, value in totals.items()}
