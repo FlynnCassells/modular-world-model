@@ -1,5 +1,8 @@
 import torch
 from torch import nn
+from mwm.data import build_datasets
+from mwm.models.world_model import WorldModel
+from torch.utils.data import DataLoader
 
 def to_device(batch, device):
 	if isinstance(batch, dict):
@@ -54,3 +57,31 @@ def evaluate(model, loader, device):
 			n_batches += 1
 		model.train()
 	return {sensor: value/n_batches for sensor, value in totals.items()}
+
+def setup(settings):
+	device = settings["device"]
+	datasets, stats, data_settings = build_datasets(name=settings["dataset_name"], window_len=settings["window_length"], stride=settings["stride"])
+	loaders = {
+		split: DataLoader(ds, batch_size=settings["batch_size"], shuffle=(split=="train"))
+		for split, ds in datasets.items()
+	}
+	sensor_dims = {
+		name: t.shape[-1] for name, t in datasets["train"].obs.items()
+	}
+	torch.manual_seed(settings["seed"])
+	model = WorldModel(sensor_dims=sensor_dims, action_dim=2, latent_dim=settings["latent_dim"], hidden_dim=settings["hidden_dim"], belief_dim=settings["belief_dim"])
+	model.to(device)
+	optimiser = torch.optim.Adam(model.parameters(), lr=settings["learning_rate"])
+	return loaders, model, optimiser, sensor_dims, data_settings, stats
+
+def persistence_baseline(loaders):
+	totals={}
+	n_batches = 0
+	for batch in loaders["val"]:
+		sensor_inputs, actions, targets, masks = prepare_inputs(batch)
+		losses, step_log = compute_loss(sensor_inputs, targets)
+		for sensor, values in step_log.items():
+			totals[sensor] = totals.get(sensor, 0) + values
+		n_batches+=1
+	baseline_losses = {sensor: value/n_batches for sensor, value in totals.items()}
+	return baseline_losses
